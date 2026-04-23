@@ -14,9 +14,11 @@ export interface Order {
 
 export interface Service {
   name: string;
-  display_name: string;
+  display_name?: string;
   price: number;
-  available_count: number;
+  available_count?: number;
+  count?: number;
+  available?: boolean | number;
 }
 
 export interface Transaction {
@@ -61,7 +63,7 @@ export const api = {
     request<BalanceResponse>(key, "/balance"),
 
   getServices: (key: string) =>
-    request<{ services: Service[] }>(key, "/services"),
+    request<{ services: Service[] } | Service[]>(key, "/services"),
 
   getService: (key: string, name: string) =>
     request<{ service: Service }>(key, `/services/${name}`),
