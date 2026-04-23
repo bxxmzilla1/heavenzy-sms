@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7c6aff"/>
+      <stop offset="100%" stop-color="#a78bfa"/>
+    </linearGradient>
+    <clipPath id="clip">
+      <rect width="180" height="180" rx="39.6" ry="39.6"/>
+    </clipPath>
+  </defs>
+  <rect width="180" height="180" rx="39.6" ry="39.6" fill="url(#g)"/>
+  <text
+    x="90"
+    y="117.972"
+    font-family="-apple-system, BlinkMacSystemFont, sans-serif"
+    font-size="75.6"
+    font-weight="700"
+    fill="white"
+    text-anchor="middle"
+    dominant-baseline="middle"
+  >H</text>
+</svg>
