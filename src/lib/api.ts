@@ -14,11 +14,22 @@ export interface Order {
 
 export interface Service {
   name: string;
-  display_name?: string;
+  display_name: string;
   price: number;
-  available_count?: number;
-  count?: number;
-  available?: boolean | number;
+  carrier_price: number;
+  stock: number;
+  ttl_minutes: number;
+}
+
+export interface ServicesPagination {
+  page: number;
+  per_page: number;
+  total_pages: number;
+}
+
+export interface ServicesResponse {
+  services: Service[];
+  pagination: ServicesPagination;
 }
 
 export interface Transaction {
@@ -62,11 +73,17 @@ export const api = {
   getBalance: (key: string) =>
     request<BalanceResponse>(key, "/balance"),
 
-  getServices: (key: string) =>
-    request<{ services: Service[] } | Service[]>(key, "/services"),
+  getServices: (key: string, params?: { search?: string; page?: number; per_page?: number }) => {
+    const qs = new URLSearchParams();
+    if (params?.search) qs.set("search", params.search);
+    if (params?.page) qs.set("page", String(params.page));
+    if (params?.per_page) qs.set("per_page", String(params.per_page));
+    const query = qs.toString();
+    return request<ServicesResponse>(key, `/services${query ? `?${query}` : ""}`);
+  },
 
   getService: (key: string, name: string) =>
-    request<{ service: Service }>(key, `/services/${name}`),
+    request<Service>(key, `/services/${name}`),
 
   getOrders: (key: string) =>
     request<{ orders: Order[] }>(key, "/orders"),

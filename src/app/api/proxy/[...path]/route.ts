@@ -30,7 +30,10 @@ async function proxyRequest(
 
   const pathSegments = params.path ?? [];
   const upstreamPath = "/" + pathSegments.join("/");
-  const upstreamUrl = `${DIDDYSMS_BASE}${upstreamPath}`;
+
+  // Forward query parameters (search, page, per_page, etc.)
+  const incomingSearch = req.nextUrl.search;
+  const upstreamUrl = `${DIDDYSMS_BASE}${upstreamPath}${incomingSearch}`;
 
   const isPost = req.method === "POST";
   let body: string | undefined;

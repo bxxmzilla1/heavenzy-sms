@@ -1,67 +1,58 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { Search, RefreshCw, ShoppingCart, Loader2, ArrowUpDown } from "lucide-react";
-import { api, Service } from "@/lib/api";
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { Search, RefreshCw, ShoppingCart, Loader2, ArrowUpDown, ChevronLeft, ChevronRight, Clock, Zap } from "lucide-react";
+import { api, Service, ServicesPagination } from "@/lib/api";
 
 interface Props {
   apiKey: string;
   onOrderCreated: () => void;
 }
 
-type SortKey = "name" | "price_asc" | "price_desc" | "available";
+type SortKey = "name" | "price_asc" | "price_desc" | "stock";
 
-function normalizeServices(raw: unknown): Service[] {
-  if (!raw) return [];
-  // Handle both array and { services: [] } shapes
-  const list: unknown[] = Array.isArray(raw)
-    ? raw
-    : Array.isArray((raw as Record<string, unknown>).services)
-    ? ((raw as Record<string, unknown>).services as unknown[])
-    : [];
-  return list as Service[];
-}
-
-function getAvailableCount(s: Service): number {
-  // Different API responses may use different field names
-  if (typeof s.available_count === "number") return s.available_count;
-  if (typeof s.count === "number") return s.count;
-  if (typeof s.available === "number") return s.available;
-  if (s.available === true) return 999;
-  if (s.available === false) return 0;
-  // If no availability info at all, assume available
-  return 999;
-}
+const QUICK_FILTERS = [
+  "google", "twitter", "telegram", "facebook",
+  "tiktok", "instagram", "whatsapp", "discord",
+  "snapchat", "amazon", "netflix", "spotify",
+];
 
 export default function Services({ apiKey, onOrderCreated }: Props) {
   const [services, setServices] = useState<Service[]>([]);
+  const [pagination, setPagination] = useState<ServicesPagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [sort, setSort] = useState<SortKey>("name");
   const [buying, setBuying] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
-  const [rawDebug, setRawDebug] = useState<string>("");
 
-  async function load() {
+  // Debounce search → triggers server-side search
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const load = useCallback(async (pg = page, q = debouncedSearch) => {
     setLoading(true);
     setError("");
-    setRawDebug("");
     try {
-      const raw = await api.getServices(apiKey);
-      const list = normalizeServices(raw);
-      setServices(list);
-      if (list.length === 0) {
-        setRawDebug(JSON.stringify(raw, null, 2).slice(0, 500));
-      }
+      const res = await api.getServices(apiKey, { search: q || undefined, page: pg, per_page: 100 });
+      setServices(res.services ?? []);
+      setPagination(res.pagination ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load services");
     } finally {
       setLoading(false);
     }
-  }
+  }, [apiKey, page, debouncedSearch]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(page, debouncedSearch); }, [debouncedSearch, page]);
 
   async function buyNumber(service: string) {
     setBuying(service);
@@ -82,29 +73,17 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
     setTimeout(() => setToast(""), 3000);
   }
 
-  const filtered = useMemo(() => {
-    let list = services.filter((s) => {
-      const q = search.toLowerCase();
-      return (
-        s.name.toLowerCase().includes(q) ||
-        (s.display_name ?? "").toLowerCase().includes(q)
-      );
+  const sorted = useMemo(() => {
+    return [...services].sort((a, b) => {
+      if (sort === "price_asc") return a.price - b.price;
+      if (sort === "price_desc") return b.price - a.price;
+      if (sort === "stock") return b.stock - a.stock;
+      return a.display_name.localeCompare(b.display_name);
     });
+  }, [services, sort]);
 
-    list = [...list].sort((a, b) => {
-      if (sort === "price_asc") return (a.price ?? 0) - (b.price ?? 0);
-      if (sort === "price_desc") return (b.price ?? 0) - (a.price ?? 0);
-      if (sort === "available") {
-        return getAvailableCount(b) - getAvailableCount(a);
-      }
-      // Default: name A-Z
-      return (a.display_name || a.name).localeCompare(b.display_name || b.name);
-    });
-
-    return list;
-  }, [services, search, sort]);
-
-  const availableCount = services.filter((s) => getAvailableCount(s) > 0).length;
+  const availableCount = services.filter((s) => s.stock > 0).length;
+  const totalPages = pagination?.total_pages ?? 1;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -113,11 +92,13 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
         <div>
           <h2 className="text-2xl font-bold text-white">Services</h2>
           <p className="text-sm mt-0.5" style={{ color: "var(--muted)" }}>
-            {loading ? "Loading..." : `${services.length} services · ${availableCount} available`}
+            {loading
+              ? "Loading..."
+              : `${services.length} services · ${availableCount} in stock`}
           </p>
         </div>
         <button
-          onClick={load}
+          onClick={() => load(page, debouncedSearch)}
           disabled={loading}
           style={{
             background: "var(--surface2)",
@@ -159,6 +140,9 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
             onFocus={(e) => (e.currentTarget.style.borderColor = "var(--accent)")}
             onBlur={(e) => (e.currentTarget.style.borderColor = "var(--border)")}
           />
+          {loading && debouncedSearch && (
+            <Loader2 size={14} className="animate-spin absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "var(--muted)" }} />
+          )}
         </div>
         <div className="relative">
           <ArrowUpDown size={14} className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: "var(--muted)" }} />
@@ -179,15 +163,15 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
           >
             <option value="name">A – Z</option>
             <option value="price_asc">Cheapest</option>
-            <option value="price_desc">Most expensive</option>
-            <option value="available">Most available</option>
+            <option value="price_desc">Priciest</option>
+            <option value="stock">Most stock</option>
           </select>
         </div>
       </div>
 
       {/* Quick-filter chips */}
       <div className="flex gap-2 flex-wrap">
-        {["gmail", "twitter", "telegram", "facebook", "tiktok", "instagram", "whatsapp", "discord"].map((tag) => (
+        {QUICK_FILTERS.map((tag) => (
           <button
             key={tag}
             onClick={() => setSearch(search === tag ? "" : tag)}
@@ -204,7 +188,7 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
               textTransform: "capitalize",
             }}
           >
-            {tag}
+            {getServiceEmoji(tag)} {tag}
           </button>
         ))}
       </div>
@@ -215,46 +199,26 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
         </div>
       )}
 
-      {/* Debug: show raw response if empty */}
-      {!loading && services.length === 0 && rawDebug && (
-        <div style={{ background: "var(--surface2)", border: "1px solid var(--border)", borderRadius: 12, padding: "1rem" }}>
-          <p className="text-xs font-bold mb-2" style={{ color: "var(--warning)" }}>API Response (unexpected format):</p>
-          <pre className="text-xs overflow-auto" style={{ color: "var(--muted)" }}>{rawDebug}</pre>
-        </div>
-      )}
-
       {/* Grid */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} style={{
-              background: "var(--surface)",
-              border: "1px solid var(--border)",
-              borderRadius: 16,
-              padding: "1.25rem",
-              height: 110,
-              opacity: 1 - i * 0.05,
-            }} />
+            <SkeletonCard key={i} />
           ))}
         </div>
-      ) : filtered.length === 0 && search ? (
+      ) : sorted.length === 0 ? (
         <div className="text-center py-12" style={{ color: "var(--muted)" }}>
           <div className="text-4xl mb-3">🔍</div>
           <p className="font-medium">No results for &ldquo;{search}&rdquo;</p>
-          <p className="text-sm mt-1">Try a different name or clear the search.</p>
+          <p className="text-sm mt-1">Try a different search term.</p>
           <button onClick={() => setSearch("")} className="mt-4 text-sm"
             style={{ color: "var(--accent2)", background: "none", border: "none", cursor: "pointer" }}>
             Clear search
           </button>
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-12" style={{ color: "var(--muted)" }}>
-          <div className="text-4xl mb-3">📭</div>
-          <p>No services returned. Check your API key or try refreshing.</p>
-        </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((service) => (
+          {sorted.map((service) => (
             <ServiceCard
               key={service.name}
               service={service}
@@ -262,6 +226,47 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
               onBuy={() => buyNumber(service.name)}
             />
           ))}
+        </div>
+      )}
+
+      {/* Pagination */}
+      {!loading && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 pt-2">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1}
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              color: page === 1 ? "var(--muted)" : "var(--text)",
+              padding: "0.5rem",
+              cursor: page === 1 ? "not-allowed" : "pointer",
+              opacity: page === 1 ? 0.5 : 1,
+              display: "flex",
+            }}
+          >
+            <ChevronLeft size={16} />
+          </button>
+          <span className="text-sm" style={{ color: "var(--muted)" }}>
+            Page <strong style={{ color: "var(--text)" }}>{page}</strong> of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages}
+            style={{
+              background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: 8,
+              color: page === totalPages ? "var(--muted)" : "var(--text)",
+              padding: "0.5rem",
+              cursor: page === totalPages ? "not-allowed" : "pointer",
+              opacity: page === totalPages ? 0.5 : 1,
+              display: "flex",
+            }}
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
       )}
 
@@ -285,73 +290,81 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
   );
 }
 
-function ServiceCard({
-  service, buying, onBuy,
-}: {
+function ServiceCard({ service, buying, onBuy }: {
   service: Service;
   buying: boolean;
   onBuy: () => void;
 }) {
-  const avail = getAvailableCount(service);
-  const available = avail > 0;
-  const label = service.display_name || service.name;
-
-  // Pick an emoji based on service name
+  const available = service.stock > 0;
   const emoji = getServiceEmoji(service.name);
 
   return (
-    <div style={{
-      background: "var(--surface)",
-      border: `1px solid ${available ? "var(--border)" : "rgba(107,107,128,0.2)"}`,
-      borderRadius: 16,
-      padding: "1.25rem",
-      display: "flex",
-      flexDirection: "column",
-      gap: "0.75rem",
-      opacity: available ? 1 : 0.65,
-      transition: "border-color 0.2s, opacity 0.2s",
-    }}
+    <div
+      style={{
+        background: "var(--surface)",
+        border: `1px solid ${available ? "var(--border)" : "rgba(107,107,128,0.2)"}`,
+        borderRadius: 16,
+        padding: "1.25rem",
+        display: "flex",
+        flexDirection: "column",
+        gap: "0.875rem",
+        opacity: available ? 1 : 0.6,
+        transition: "border-color 0.2s",
+      }}
       onMouseOver={(e) => available && (e.currentTarget.style.borderColor = "var(--accent)")}
       onMouseOut={(e) => (e.currentTarget.style.borderColor = available ? "var(--border)" : "rgba(107,107,128,0.2)")}
     >
+      {/* Name + stock */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <span className="text-xl shrink-0">{emoji}</span>
           <div className="min-w-0">
-            <p className="font-semibold text-white capitalize truncate" style={{ fontSize: 14 }}>
-              {label}
+            <p className="font-semibold text-white truncate" style={{ fontSize: 14 }}>
+              {service.display_name}
             </p>
-            {label.toLowerCase() !== service.name.toLowerCase() && (
-              <p className="text-xs capitalize" style={{ color: "var(--muted)" }}>
-                {service.name}
-              </p>
-            )}
+            <p className="text-xs" style={{ color: "var(--muted)" }}>{service.name}</p>
           </div>
         </div>
-        <span className="text-xs px-2 py-0.5 rounded-full shrink-0"
+        <span className="text-xs px-2 py-0.5 rounded-full shrink-0 font-medium"
           style={{
             background: available ? "rgba(34,211,160,0.1)" : "rgba(107,107,128,0.1)",
             color: available ? "var(--success)" : "var(--muted)",
             border: `1px solid ${available ? "rgba(34,211,160,0.25)" : "var(--border)"}`,
           }}>
-          {avail >= 999 ? "In stock" : available ? `${avail} left` : "Unavailable"}
+          {available ? `${service.stock} left` : "Out of stock"}
         </span>
       </div>
 
+      {/* TTL + carrier price */}
+      <div className="flex items-center gap-3 text-xs" style={{ color: "var(--muted)" }}>
+        <span className="flex items-center gap-1">
+          <Clock size={11} />
+          {service.ttl_minutes}min rental
+        </span>
+        <span className="flex items-center gap-1">
+          <Zap size={11} />
+          Carrier: ${service.carrier_price.toFixed(2)}
+        </span>
+      </div>
+
+      {/* Price + Buy */}
       <div className="flex items-center justify-between">
-        <p className="text-xl font-bold" style={{ color: "var(--accent2)" }}>
-          ${(service.price ?? 0).toFixed(2)}
-        </p>
+        <div>
+          <p className="text-xl font-bold" style={{ color: "var(--accent2)" }}>
+            ${service.price.toFixed(2)}
+          </p>
+          <p className="text-xs" style={{ color: "var(--muted)" }}>per number</p>
+        </div>
         <button
           onClick={onBuy}
           disabled={buying || !available}
-          title={!available ? "Currently unavailable" : undefined}
+          title={!available ? "Currently out of stock" : undefined}
           style={{
             background: available ? "linear-gradient(135deg, #7c6aff, #a78bfa)" : "var(--surface2)",
             color: available ? "white" : "var(--muted)",
             border: "none",
             borderRadius: 10,
-            padding: "0.5rem 1rem",
+            padding: "0.55rem 1.1rem",
             fontSize: 13,
             fontWeight: 600,
             cursor: buying ? "wait" : available ? "pointer" : "not-allowed",
@@ -370,14 +383,41 @@ function ServiceCard({
   );
 }
 
+function SkeletonCard() {
+  return (
+    <div style={{
+      background: "var(--surface)",
+      border: "1px solid var(--border)",
+      borderRadius: 16,
+      padding: "1.25rem",
+      display: "flex",
+      flexDirection: "column",
+      gap: "0.875rem",
+    }}>
+      <div className="flex items-center gap-2">
+        <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--surface2)" }} />
+        <div style={{ flex: 1 }}>
+          <div style={{ height: 14, width: "60%", borderRadius: 4, background: "var(--surface2)", marginBottom: 6 }} />
+          <div style={{ height: 10, width: "35%", borderRadius: 4, background: "var(--surface2)" }} />
+        </div>
+      </div>
+      <div style={{ height: 10, width: "50%", borderRadius: 4, background: "var(--surface2)" }} />
+      <div className="flex justify-between items-center">
+        <div style={{ height: 24, width: "25%", borderRadius: 4, background: "var(--surface2)" }} />
+        <div style={{ height: 34, width: "30%", borderRadius: 10, background: "var(--surface2)" }} />
+      </div>
+    </div>
+  );
+}
+
 function getServiceEmoji(name: string): string {
   const n = name.toLowerCase();
   if (n.includes("gmail") || n.includes("google")) return "📧";
-  if (n.includes("twitter") || n.includes("x.com")) return "🐦";
+  if (n.includes("twitter") || n === "x") return "🐦";
   if (n.includes("telegram")) return "✈️";
   if (n.includes("whatsapp")) return "💬";
   if (n.includes("facebook") || n.includes("fb")) return "👤";
-  if (n.includes("instagram") || n.includes("insta")) return "📷";
+  if (n.includes("instagram")) return "📷";
   if (n.includes("tiktok")) return "🎵";
   if (n.includes("discord")) return "🎮";
   if (n.includes("snapchat")) return "👻";
@@ -392,8 +432,11 @@ function getServiceEmoji(name: string): string {
   if (n.includes("linkedin")) return "💼";
   if (n.includes("reddit")) return "🤖";
   if (n.includes("yahoo")) return "📮";
-  if (n.includes("line")) return "💚";
   if (n.includes("viber")) return "📞";
   if (n.includes("signal")) return "🔐";
+  if (n.includes("line")) return "💚";
+  if (n.includes("wechat")) return "🟢";
+  if (n.includes("steam")) return "🎲";
+  if (n.includes("twitch")) return "🟣";
   return "📱";
 }

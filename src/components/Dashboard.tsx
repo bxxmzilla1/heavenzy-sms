@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Wallet, RefreshCw, TrendingUp } from "lucide-react";
-import { api, Order } from "@/lib/api";
+import { api } from "@/lib/api";
+import type { Order } from "@/lib/api";
 
 interface Props {
   apiKey: string;
