@@ -14,8 +14,8 @@ export default function ApiKeyModal({ onSave }: Props) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!key.startsWith("dsk_") || key.length !== 52) {
-      setError("API key must start with dsk_ and be 52 characters long.");
+    if (!key.startsWith("dsk_") || key.length < 20) {
+      setError("Invalid API key. It must start with dsk_ (get it from the DiddySMS Telegram bot).");
       return;
     }
     onSave(key.trim());
