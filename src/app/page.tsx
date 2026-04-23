@@ -2,11 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { LayoutDashboard, PhoneCall, ClipboardList, Receipt, LogOut, Wifi } from "lucide-react";
-import ApiKeyModal from "@/components/ApiKeyModal";
+import PasswordModal from "@/components/PasswordModal";
 import Dashboard from "@/components/Dashboard";
 import Services from "@/components/Services";
 import Orders from "@/components/Orders";
 import Transactions from "@/components/Transactions";
+import { setSessionToken } from "@/lib/api";
 
 type Tab = "dashboard" | "services" | "orders" | "transactions";
 
@@ -17,8 +18,10 @@ const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
   { id: "transactions", label: "Transactions", icon: <Receipt size={20} /> },
 ];
 
+const SESSION_KEY = "heavenzysms_session";
+
 export default function App() {
-  const [apiKey, setApiKey] = useState<string | null>(null);
+  const [authenticated, setAuthenticated] = useState(false);
   const [tab, setTab] = useState<Tab>("dashboard");
   const [refreshTick, setRefreshTick] = useState(0);
   const [mounted, setMounted] = useState(false);
@@ -26,10 +29,14 @@ export default function App() {
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem("heavenzysms_key");
-    if (stored) setApiKey(stored);
-    setIsOnline(navigator.onLine);
 
+    const stored = localStorage.getItem(SESSION_KEY);
+    if (stored) {
+      setSessionToken(stored);
+      setAuthenticated(true);
+    }
+
+    setIsOnline(navigator.onLine);
     const onOnline = () => setIsOnline(true);
     const onOffline = () => setIsOnline(false);
     window.addEventListener("online", onOnline);
@@ -40,21 +47,22 @@ export default function App() {
     };
   }, []);
 
-  // Register service worker
   useEffect(() => {
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
   }, []);
 
-  function saveKey(key: string) {
-    localStorage.setItem("heavenzysms_key", key);
-    setApiKey(key);
+  function handleLogin(token: string) {
+    localStorage.setItem(SESSION_KEY, token);
+    setSessionToken(token);
+    setAuthenticated(true);
   }
 
   function logout() {
-    localStorage.removeItem("heavenzysms_key");
-    setApiKey(null);
+    localStorage.removeItem(SESSION_KEY);
+    setSessionToken("");
+    setAuthenticated(false);
   }
 
   const handleOrderCreated = useCallback(() => {
@@ -64,25 +72,29 @@ export default function App() {
 
   if (!mounted) return null;
 
-  if (!apiKey) {
-    return <ApiKeyModal onSave={saveKey} />;
+  if (!authenticated) {
+    return <PasswordModal onSuccess={handleLogin} />;
   }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
       {/* Top Nav */}
-      <header style={{
-        background: "var(--surface)",
-        borderBottom: "1px solid var(--border)",
-        position: "sticky",
-        top: 0,
-        zIndex: 40,
-      }}>
+      <header
+        style={{
+          background: "var(--surface)",
+          borderBottom: "1px solid var(--border)",
+          position: "sticky",
+          top: 0,
+          zIndex: 40,
+        }}
+      >
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #7c6aff, #a78bfa)" }}>
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center"
+              style={{ background: "linear-gradient(135deg, #7c6aff, #a78bfa)" }}
+            >
               <span className="text-white font-bold text-sm">H</span>
             </div>
             <span className="font-bold text-white text-lg hidden sm:block">Heavenzy SMS</span>
@@ -118,15 +130,21 @@ export default function App() {
           {/* Right */}
           <div className="flex items-center gap-3">
             {!isOnline && (
-              <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
-                style={{ background: "rgba(251,191,36,0.15)", color: "var(--warning)", border: "1px solid rgba(251,191,36,0.3)" }}>
+              <span
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+                style={{
+                  background: "rgba(251,191,36,0.15)",
+                  color: "var(--warning)",
+                  border: "1px solid rgba(251,191,36,0.3)",
+                }}
+              >
                 <Wifi size={12} />
                 Offline
               </span>
             )}
             <button
               onClick={logout}
-              title="Logout"
+              title="Sign out"
               style={{
                 background: "var(--surface2)",
                 border: "1px solid var(--border)",
@@ -146,27 +164,21 @@ export default function App() {
 
       {/* Content */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
-        {tab === "dashboard" && (
-          <Dashboard apiKey={apiKey} refreshTick={refreshTick} />
-        )}
-        {tab === "services" && (
-          <Services apiKey={apiKey} onOrderCreated={handleOrderCreated} />
-        )}
-        {tab === "orders" && (
-          <Orders apiKey={apiKey} refreshTick={refreshTick} />
-        )}
-        {tab === "transactions" && (
-          <Transactions apiKey={apiKey} />
-        )}
+        {tab === "dashboard" && <Dashboard refreshTick={refreshTick} />}
+        {tab === "services" && <Services onOrderCreated={handleOrderCreated} />}
+        {tab === "orders" && <Orders refreshTick={refreshTick} />}
+        {tab === "transactions" && <Transactions />}
       </main>
 
       {/* Mobile Bottom Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40"
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-40"
         style={{
           background: "var(--surface)",
           borderTop: "1px solid var(--border)",
           paddingBottom: "env(safe-area-inset-bottom)",
-        }}>
+        }}
+      >
         <div className="flex">
           {TABS.map((t) => (
             <button
@@ -183,7 +195,12 @@ export default function App() {
                 transition: "color 0.15s",
               }}
             >
-              <span style={{ transform: tab === t.id ? "scale(1.1)" : "scale(1)", transition: "transform 0.15s" }}>
+              <span
+                style={{
+                  transform: tab === t.id ? "scale(1.1)" : "scale(1)",
+                  transition: "transform 0.15s",
+                }}
+              >
                 {t.icon}
               </span>
               {t.label}

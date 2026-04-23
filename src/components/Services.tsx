@@ -5,7 +5,6 @@ import { Search, RefreshCw, ShoppingCart, Loader2, ArrowUpDown, ChevronLeft, Che
 import { api, Service, ServicesPagination } from "@/lib/api";
 
 interface Props {
-  apiKey: string;
   onOrderCreated: () => void;
 }
 
@@ -17,7 +16,7 @@ const QUICK_FILTERS = [
   "snapchat", "amazon", "netflix", "spotify",
 ];
 
-export default function Services({ apiKey, onOrderCreated }: Props) {
+export default function Services({ onOrderCreated }: Props) {
   const [services, setServices] = useState<Service[]>([]);
   const [pagination, setPagination] = useState<ServicesPagination | null>(null);
   const [loading, setLoading] = useState(true);
@@ -42,7 +41,7 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
     setLoading(true);
     setError("");
     try {
-      const res = await api.getServices(apiKey, { search: q || undefined, page: pg, per_page: 100 });
+      const res = await api.getServices({ search: q || undefined, page: pg, per_page: 100 });
       setServices(res.services ?? []);
       setPagination(res.pagination ?? null);
     } catch (e) {
@@ -50,7 +49,7 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [apiKey, page, debouncedSearch]);
+  }, [page, debouncedSearch]);
 
   useEffect(() => { load(page, debouncedSearch); }, [debouncedSearch, page]);
 
@@ -58,7 +57,7 @@ export default function Services({ apiKey, onOrderCreated }: Props) {
     setBuying(service);
     setError("");
     try {
-      await api.createOrder(apiKey, service);
+      await api.createOrder(service);
       showToast(`Number rented for ${service}!`);
       onOrderCreated();
     } catch (e) {

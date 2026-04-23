@@ -5,11 +5,10 @@ import { RefreshCw, Copy, CheckCircle, XCircle, RotateCcw, Loader2, Clock } from
 import { api, Order } from "@/lib/api";
 
 interface Props {
-  apiKey: string;
   refreshTick: number;
 }
 
-export default function Orders({ apiKey, refreshTick }: Props) {
+export default function Orders({ refreshTick }: Props) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
@@ -21,14 +20,14 @@ export default function Orders({ apiKey, refreshTick }: Props) {
     setLoading(true);
     setError("");
     try {
-      const res = await api.getOrders(apiKey);
+      const res = await api.getOrders();
       setOrders(res.orders ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load orders");
     } finally {
       setLoading(false);
     }
-  }, [apiKey]);
+  }, []);
 
   useEffect(() => { load(); }, [load, refreshTick]);
 
@@ -40,7 +39,7 @@ export default function Orders({ apiKey, refreshTick }: Props) {
     const interval = setInterval(async () => {
       try {
         const updated = await Promise.all(
-          active.map((o) => api.getOrder(apiKey, o.id).then((r) => r.order))
+          active.map((o) => api.getOrder(o.id).then((r) => r.order))
         );
         setOrders((prev) =>
           prev.map((o) => {
@@ -52,12 +51,12 @@ export default function Orders({ apiKey, refreshTick }: Props) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [orders, apiKey]);
+  }, [orders]);
 
   async function handleCancel(id: number) {
     setActionLoading(id);
     try {
-      const res = await api.cancelOrder(apiKey, id);
+      const res = await api.cancelOrder(id);
       setOrders((prev) => prev.map((o) => (o.id === id ? res.order : o)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Cancel failed");
@@ -69,7 +68,7 @@ export default function Orders({ apiKey, refreshTick }: Props) {
   async function handleComplete(id: number) {
     setActionLoading(id);
     try {
-      const res = await api.completeOrder(apiKey, id);
+      const res = await api.completeOrder(id);
       setOrders((prev) => prev.map((o) => (o.id === id ? res.order : o)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Complete failed");
@@ -81,7 +80,7 @@ export default function Orders({ apiKey, refreshTick }: Props) {
   async function handleReRent(id: number) {
     setActionLoading(id);
     try {
-      const res = await api.reRentOrder(apiKey, id);
+      const res = await api.reRentOrder(id);
       setOrders((prev) => prev.map((o) => (o.id === id ? res.order : o)));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Re-rent failed");

@@ -4,11 +4,7 @@ import { useEffect, useState } from "react";
 import { RefreshCw, Loader2, ArrowDownLeft, ArrowUpRight, Repeat2 } from "lucide-react";
 import { api, Transaction } from "@/lib/api";
 
-interface Props {
-  apiKey: string;
-}
-
-export default function Transactions({ apiKey }: Props) {
+export default function Transactions() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -17,7 +13,7 @@ export default function Transactions({ apiKey }: Props) {
     setLoading(true);
     setError("");
     try {
-      const res = await api.getTransactions(apiKey);
+      const res = await api.getTransactions();
       setTransactions(res.transactions ?? []);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load transactions");

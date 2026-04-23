@@ -6,11 +6,10 @@ import { api } from "@/lib/api";
 import type { Order } from "@/lib/api";
 
 interface Props {
-  apiKey: string;
   refreshTick: number;
 }
 
-export default function Dashboard({ apiKey, refreshTick }: Props) {
+export default function Dashboard({ refreshTick }: Props) {
   const [balance, setBalance] = useState<number | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,8 +20,8 @@ export default function Dashboard({ apiKey, refreshTick }: Props) {
     setError("");
     try {
       const [bal, ords] = await Promise.all([
-        api.getBalance(apiKey),
-        api.getOrders(apiKey),
+        api.getBalance(),
+        api.getOrders(),
       ]);
       setBalance(bal.balance);
       setOrders(ords.orders ?? []);

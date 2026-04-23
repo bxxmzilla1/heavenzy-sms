@@ -1,11 +1,10 @@
-export const BASE_URL = "https://api.diddysms.com/v1";
-
 export interface Order {
   id: number;
   service: string;
   phone_number: string;
   status: "active" | "completed" | "cancelled" | "expired";
   price: number;
+  carrier_price?: number;
   carrier: string | null;
   sms_code: string | null;
   expires_at: string;
@@ -44,16 +43,20 @@ export interface BalanceResponse {
   balance: number;
 }
 
-async function request<T>(
-  apiKey: string,
-  path: string,
-  options?: RequestInit
-): Promise<T> {
+// Session token is stored in localStorage and sent with every request.
+// The server reads the real DIDDYSMS_API_KEY from env variables.
+let _sessionToken = "";
+
+export function setSessionToken(token: string) {
+  _sessionToken = token;
+}
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api/proxy${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      "x-api-key": apiKey,
+      "x-session-token": _sessionToken,
       ...(options?.headers ?? {}),
     },
   });
@@ -62,7 +65,7 @@ async function request<T>(
 
   if (!res.ok) {
     const msg =
-      data?.detail?.error?.message ?? data?.message ?? "Request failed";
+      data?.detail?.error?.message ?? data?.error ?? data?.message ?? "Request failed";
     throw new Error(msg);
   }
 
@@ -70,48 +73,37 @@ async function request<T>(
 }
 
 export const api = {
-  getBalance: (key: string) =>
-    request<BalanceResponse>(key, "/balance"),
+  getBalance: () => request<BalanceResponse>("/balance"),
 
-  getServices: (key: string, params?: { search?: string; page?: number; per_page?: number }) => {
+  getServices: (params?: { search?: string; page?: number; per_page?: number }) => {
     const qs = new URLSearchParams();
     if (params?.search) qs.set("search", params.search);
     if (params?.page) qs.set("page", String(params.page));
     if (params?.per_page) qs.set("per_page", String(params.per_page));
     const query = qs.toString();
-    return request<ServicesResponse>(key, `/services${query ? `?${query}` : ""}`);
+    return request<ServicesResponse>(`/services${query ? `?${query}` : ""}`);
   },
 
-  getService: (key: string, name: string) =>
-    request<Service>(key, `/services/${name}`),
+  getService: (name: string) => request<Service>(`/services/${name}`),
 
-  getOrders: (key: string) =>
-    request<{ orders: Order[] }>(key, "/orders"),
+  getOrders: () => request<{ orders: Order[] }>("/orders"),
 
-  getOrder: (key: string, id: number) =>
-    request<{ order: Order }>(key, `/orders/${id}`),
+  getOrder: (id: number) => request<{ order: Order }>(`/orders/${id}`),
 
-  createOrder: (key: string, service: string) =>
-    request<{ order: Order }>(key, "/orders", {
+  createOrder: (service: string) =>
+    request<{ order: Order }>("/orders", {
       method: "POST",
       body: JSON.stringify({ service }),
     }),
 
-  cancelOrder: (key: string, id: number) =>
-    request<{ order: Order }>(key, `/orders/${id}/cancel`, {
-      method: "POST",
-    }),
+  cancelOrder: (id: number) =>
+    request<{ order: Order }>(`/orders/${id}/cancel`, { method: "POST" }),
 
-  completeOrder: (key: string, id: number) =>
-    request<{ order: Order }>(key, `/orders/${id}/complete`, {
-      method: "POST",
-    }),
+  completeOrder: (id: number) =>
+    request<{ order: Order }>(`/orders/${id}/complete`, { method: "POST" }),
 
-  reRentOrder: (key: string, id: number) =>
-    request<{ order: Order }>(key, `/orders/${id}/re-rent`, {
-      method: "POST",
-    }),
+  reRentOrder: (id: number) =>
+    request<{ order: Order }>(`/orders/${id}/re-rent`, { method: "POST" }),
 
-  getTransactions: (key: string) =>
-    request<{ transactions: Transaction[] }>(key, "/transactions"),
+  getTransactions: () => request<{ transactions: Transaction[] }>("/transactions"),
 };
