@@ -35,6 +35,13 @@ const cardClass = {
   },
 };
 
+/** Service slugs we never list (API may still return them). */
+const EXCLUDED_SERVICE_NAMES = new Set(["draftkings"]);
+
+function isServiceExcluded(s: Service): boolean {
+  return EXCLUDED_SERVICE_NAMES.has(s.name.toLowerCase().trim());
+}
+
 export default function Services({ onOrderCreated }: Props) {
   const [services, setServices] = useState<Service[]>([]);
   const [pagination, setPagination] = useState<ServicesPagination | null>(null);
@@ -96,15 +103,17 @@ export default function Services({ onOrderCreated }: Props) {
   }
 
   const sorted = useMemo(() => {
-    return [...services].sort((a, b) => {
-      if (sort === "price_asc") return a.price - b.price;
-      if (sort === "price_desc") return b.price - a.price;
-      if (sort === "stock") return b.stock - a.stock;
-      return a.display_name.localeCompare(b.display_name);
-    });
+    return [...services]
+      .filter((s) => !isServiceExcluded(s))
+      .sort((a, b) => {
+        if (sort === "price_asc") return a.price - b.price;
+        if (sort === "price_desc") return b.price - a.price;
+        if (sort === "stock") return b.stock - a.stock;
+        return a.display_name.localeCompare(b.display_name);
+      });
   }, [services, sort]);
 
-  const availableCount = services.filter((s) => s.stock > 0).length;
+  const availableCount = services.filter((s) => s.stock > 0 && !isServiceExcluded(s)).length;
   const totalPages = pagination?.total_pages ?? 1;
 
   return (
@@ -117,7 +126,7 @@ export default function Services({ onOrderCreated }: Props) {
           <p className="text-sm mt-0.5" style={{ color: "var(--muted)" }}>
             {loading
               ? "Loading"
-              : `${services.length} services — ${availableCount} in stock`}
+              : `${sorted.length} services — ${availableCount} in stock`}
           </p>
         </div>
         <button
