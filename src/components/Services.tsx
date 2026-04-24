@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   Search,
   RefreshCw,
@@ -38,20 +38,57 @@ const cardClass = {
 /** Service slugs we never list (API may still return them). */
 const EXCLUDED_SERVICE_NAMES = new Set(["draftkings"]);
 
-/** Extra search terms when a quick-filter label may not match the API `name` slug. */
-const SEARCH_VARIANTS: Record<string, string[]> = {
-  instagram: ["instagram", "ig"],
-};
-
 function isServiceExcluded(s: Service): boolean {
   return EXCLUDED_SERVICE_NAMES.has(s.name.toLowerCase().trim());
 }
 
-function searchQueriesForInput(q: string): (string | undefined)[] {
-  const trimmed = q.trim();
-  if (!trimmed) return [undefined];
-  const multi = SEARCH_VARIANTS[trimmed.toLowerCase()];
-  return multi ?? [trimmed];
+/** Match user text against slug and display name (API search often only hits slug). */
+function serviceMatchesQuery(s: Service, rawQuery: string): boolean {
+  const q = rawQuery.trim().toLowerCase();
+  if (!q) return true;
+  const hay = `${s.name} ${s.display_name}`.toLowerCase();
+  return hay.includes(q);
+}
+
+async function fetchAllServicePages(): Promise<Service[]> {
+  const acc: Service[] = [];
+  let p = 1;
+  let totalPages = 1;
+  do {
+    const res = await api.getServices({ page: p, per_page: 100 });
+    acc.push(...(res.services ?? []));
+    totalPages = res.pagination?.total_pages ?? 1;
+    p++;
+  } while (p <= totalPages);
+  return acc;
+}
+
+/** API slugs to try so Instagram stays available if missing from list responses. */
+const INSTAGRAM_SLUG_TRIES = ["instagram", "ig", "instagram/threads"] as const;
+
+function listAlreadyHasInstagramLike(services: Service[]): boolean {
+  return services.some((s) => {
+    const b = `${s.name} ${s.display_name}`.toLowerCase();
+    return b.includes("instagram") || s.name.trim().toLowerCase() === "ig";
+  });
+}
+
+/** Merge Instagram from GET /services/:name when it is not already in the list. */
+async function ensureInstagramService(services: Service[]): Promise<Service[]> {
+  if (listAlreadyHasInstagramLike(services)) return services;
+
+  const byName = new Map(services.map((s) => [s.name, s]));
+  for (const slug of INSTAGRAM_SLUG_TRIES) {
+    try {
+      const s = await api.getService(slug);
+      if (isServiceExcluded(s)) continue;
+      byName.set(s.name, s);
+      return Array.from(byName.values());
+    } catch {
+      /* try next slug */
+    }
+  }
+  return services;
 }
 
 /** Values accepted by POST /v1/orders per DiddySMS API docs. */
@@ -72,6 +109,7 @@ export default function Services({ onOrderCreated }: Props) {
   const [buying, setBuying] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [toast, setToast] = useState("");
+  const loadRequestId = useRef(0);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -83,37 +121,45 @@ export default function Services({ onOrderCreated }: Props) {
 
   const load = useCallback(
     async (pg = page, q = debouncedSearch) => {
+      const reqId = ++loadRequestId.current;
       setLoading(true);
       setError("");
       try {
-        const queries = searchQueriesForInput(q);
-        const responses = await Promise.all(
-          queries.map((search) => api.getServices({ search, page: pg, per_page: 100 }))
-        );
-        const seen = new Set<string>();
-        const merged: Service[] = [];
-        for (const res of responses) {
-          for (const s of res.services ?? []) {
-            if (!seen.has(s.name)) {
-              seen.add(s.name);
-              merged.push(s);
-            }
-          }
+        const trimmed = q.trim();
+
+        if (!trimmed) {
+          const res = await api.getServices({ page: pg, per_page: 100 });
+          if (reqId !== loadRequestId.current) return;
+          const withInstagram = await ensureInstagramService(res.services ?? []);
+          if (reqId !== loadRequestId.current) return;
+          setServices(withInstagram);
+          setPagination(res.pagination ?? null);
+          return;
         }
-        setServices(merged);
-        setPagination(responses[0]?.pagination ?? null);
+
+        const all = await fetchAllServicePages();
+        if (reqId !== loadRequestId.current) return;
+
+        let filtered = all.filter(
+          (s) => serviceMatchesQuery(s, trimmed) && !isServiceExcluded(s)
+        );
+        filtered = await ensureInstagramService(filtered);
+        if (reqId !== loadRequestId.current) return;
+        setServices(filtered);
+        setPagination({ page: 1, per_page: filtered.length || 100, total_pages: 1 });
       } catch (e) {
+        if (reqId !== loadRequestId.current) return;
         setError(e instanceof Error ? e.message : "Failed to load services");
       } finally {
-        setLoading(false);
+        if (reqId === loadRequestId.current) setLoading(false);
       }
     },
     [page, debouncedSearch]
   );
 
   useEffect(() => {
-    load(page, debouncedSearch);
-  }, [debouncedSearch, page]);
+    void load(page, debouncedSearch);
+  }, [debouncedSearch, page, load]);
 
   async function buyNumber(service: string, carrier: string) {
     setBuying(service);
@@ -135,18 +181,30 @@ export default function Services({ onOrderCreated }: Props) {
   }
 
   const sorted = useMemo(() => {
+    const q = search.trim();
+    const igFirst = (s: Service) => {
+      const b = `${s.name} ${s.display_name}`.toLowerCase();
+      return b.includes("instagram") || s.name.trim().toLowerCase() === "ig";
+    };
     return [...services]
       .filter((s) => !isServiceExcluded(s))
+      .filter((s) => !q || serviceMatchesQuery(s, q))
       .sort((a, b) => {
         if (sort === "price_asc") return a.price - b.price;
         if (sort === "price_desc") return b.price - a.price;
         if (sort === "stock") return b.stock - a.stock;
+        if (sort === "name") {
+          const ai = igFirst(a);
+          const bi = igFirst(b);
+          if (ai !== bi) return ai ? -1 : 1;
+        }
         return a.display_name.localeCompare(b.display_name);
       });
-  }, [services, sort]);
+  }, [services, sort, search]);
 
-  const availableCount = services.filter((s) => s.stock > 0 && !isServiceExcluded(s)).length;
+  const availableCount = sorted.filter((s) => s.stock > 0).length;
   const totalPages = pagination?.total_pages ?? 1;
+  const showPagination = !search.trim() && totalPages > 1;
 
   return (
     <div className="space-y-5 animate-fade-in">
@@ -213,7 +271,7 @@ export default function Services({ onOrderCreated }: Props) {
               e.currentTarget.style.borderColor = "var(--border)";
             }}
           />
-          {loading && debouncedSearch && (
+          {loading && search.trim() && (
             <Loader2
               size={14}
               className="animate-spin absolute right-3 top-1/2 -translate-y-1/2"
@@ -335,7 +393,7 @@ export default function Services({ onOrderCreated }: Props) {
         </div>
       )}
 
-      {!loading && totalPages > 1 && (
+      {!loading && showPagination && (
         <div className="flex items-center justify-center gap-2 pt-1">
           <button
             type="button"

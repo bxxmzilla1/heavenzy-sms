@@ -84,7 +84,8 @@ export const api = {
     return request<ServicesResponse>(`/services${query ? `?${query}` : ""}`);
   },
 
-  getService: (name: string) => request<Service>(`/services/${name}`),
+  getService: (name: string) =>
+    request<Service>(`/services/${encodeURIComponent(name)}`),
 
   getOrders: () => request<{ orders: Order[] }>("/orders"),
 
