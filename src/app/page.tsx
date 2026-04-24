@@ -53,27 +53,30 @@ export default function App() {
     }
   }, []);
 
-  const fetchBalance = useCallback(async () => {
-    setBalanceLoading(true);
+  const fetchBalance = useCallback(async (options?: { silent?: boolean }) => {
+    const silent = options?.silent === true;
+    if (!silent) setBalanceLoading(true);
     try {
       const res = await api.getBalance();
       setBalance(res.balance);
     } catch {
       // silently fail
     } finally {
-      setBalanceLoading(false);
+      if (!silent) setBalanceLoading(false);
     }
   }, []);
 
-  // Fetch balance once authenticated
+  // Poll balance every second while signed in (silent updates — no flickering spinner)
   useEffect(() => {
-    if (authenticated) fetchBalance();
-  }, [authenticated, fetchBalance]);
+    if (!authenticated) return;
 
-  // Refresh balance whenever an order is created
-  useEffect(() => {
-    if (authenticated && refreshTick > 0) fetchBalance();
-  }, [refreshTick, authenticated, fetchBalance]);
+    void fetchBalance();
+    const id = setInterval(() => {
+      void fetchBalance({ silent: true });
+    }, 1000);
+
+    return () => clearInterval(id);
+  }, [authenticated, fetchBalance]);
 
   function handleLogin(token: string) {
     localStorage.setItem(SESSION_KEY, token);
@@ -173,7 +176,7 @@ export default function App() {
 
             <button
               type="button"
-              onClick={fetchBalance}
+              onClick={() => void fetchBalance()}
               title="Refresh balance"
               style={{
                 display: "flex",
