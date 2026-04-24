@@ -42,6 +42,13 @@ function isServiceExcluded(s: Service): boolean {
   return EXCLUDED_SERVICE_NAMES.has(s.name.toLowerCase().trim());
 }
 
+/** Values accepted by POST /v1/orders per DiddySMS API docs. */
+const CARRIER_OPTIONS: { value: string; label: string }[] = [
+  { value: "", label: "Any carrier" },
+  { value: "at&t", label: "AT&T" },
+  { value: "tmobile", label: "T-Mobile" },
+];
+
 export default function Services({ onOrderCreated }: Props) {
   const [services, setServices] = useState<Service[]>([]);
   const [pagination, setPagination] = useState<ServicesPagination | null>(null);
@@ -83,11 +90,11 @@ export default function Services({ onOrderCreated }: Props) {
     load(page, debouncedSearch);
   }, [debouncedSearch, page]);
 
-  async function buyNumber(service: string) {
+  async function buyNumber(service: string, carrier: string) {
     setBuying(service);
     setError("");
     try {
-      await api.createOrder(service);
+      await api.createOrder(service, carrier ? { carrier } : undefined);
       showToast("Number rented");
       onOrderCreated();
     } catch (e) {
@@ -297,7 +304,7 @@ export default function Services({ onOrderCreated }: Props) {
               key={service.name}
               service={service}
               buying={buying === service.name}
-              onBuy={() => buyNumber(service.name)}
+              onBuy={(carrier) => buyNumber(service.name, carrier)}
             />
           ))}
         </div>
@@ -403,9 +410,11 @@ function ServiceCard({
 }: {
   service: Service;
   buying: boolean;
-  onBuy: () => void;
+  onBuy: (carrier: string) => void;
 }) {
   const available = service.stock > 0;
+  const [carrier, setCarrier] = useState("");
+  const displayPrice = carrier ? service.carrier_price : service.price;
 
   return (
     <div
@@ -453,14 +462,42 @@ function ServiceCard({
         </span>
         <span className="flex items-center gap-1">
           <Zap size={12} />
-          ${service.carrier_price.toFixed(2)} carrier
+          With carrier pick: ${service.carrier_price.toFixed(2)}
         </span>
+      </div>
+
+      <div className="space-y-1.5">
+        <label className="text-[11px] font-medium block" style={{ color: "var(--muted)" }}>
+          Carrier for registration
+        </label>
+        <select
+          value={carrier}
+          onChange={(e) => setCarrier(e.target.value)}
+          disabled={!available}
+          className="w-full text-sm font-medium outline-none"
+          style={{
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            color: "var(--text)",
+            padding: "0.45rem 0.65rem",
+            cursor: available ? "pointer" : "not-allowed",
+            opacity: available ? 1 : 0.6,
+          }}
+        >
+          {CARRIER_OPTIONS.map((o) => (
+            <option key={o.value || "any"} value={o.value}>
+              {o.label}
+              {o.value ? " (+20%)" : ""}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex items-center justify-between pt-0.5">
         <div>
           <p className="text-lg font-bold tabular-nums" style={{ color: "var(--accent)" }}>
-            ${service.price.toFixed(2)}
+            ${displayPrice.toFixed(2)}
           </p>
           <p className="text-[11px]" style={{ color: "var(--muted)" }}>
             per number
@@ -468,7 +505,7 @@ function ServiceCard({
         </div>
         <button
           type="button"
-          onClick={onBuy}
+          onClick={() => onBuy(carrier)}
           disabled={buying || !available}
           style={{
             background: available

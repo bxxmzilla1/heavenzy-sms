@@ -247,6 +247,18 @@ function OrderCard({
         <div>
           <div className="flex items-center gap-2 flex-wrap">
             <p className="font-semibold capitalize" style={{ color: "var(--text)" }}>{order.service}</p>
+            {order.carrier && (
+              <span
+                className="text-xs px-2 py-0.5 rounded-md font-medium"
+                style={{
+                  background: "var(--surface2)",
+                  color: "var(--muted)",
+                  border: "1px solid var(--border)",
+                }}
+              >
+                {order.carrier === "at&t" ? "AT&T" : order.carrier === "tmobile" ? "T-Mobile" : order.carrier}
+              </span>
+            )}
             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
               style={{
                 background: `${statusColor}18`,

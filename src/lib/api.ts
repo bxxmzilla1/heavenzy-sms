@@ -90,11 +90,14 @@ export const api = {
 
   getOrder: (id: number) => request<{ order: Order }>(`/orders/${id}`),
 
-  createOrder: (service: string) =>
-    request<{ order: Order }>("/orders", {
+  createOrder: (service: string, options?: { carrier?: string }) => {
+    const body: { service: string; carrier?: string } = { service };
+    if (options?.carrier) body.carrier = options.carrier;
+    return request<{ order: Order }>("/orders", {
       method: "POST",
-      body: JSON.stringify({ service }),
-    }),
+      body: JSON.stringify(body),
+    });
+  },
 
   cancelOrder: (id: number) =>
     request<{ order: Order }>(`/orders/${id}/cancel`, { method: "POST" }),
