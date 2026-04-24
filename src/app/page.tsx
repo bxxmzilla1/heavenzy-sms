@@ -103,36 +103,43 @@ export default function App() {
         style={{
           background: "var(--surface)",
           borderBottom: "1px solid var(--border)",
+          boxShadow: "var(--shadow-sm)",
           position: "sticky",
           top: 0,
           zIndex: 40,
         }}
       >
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+        <div className="max-w-5xl mx-auto px-4 h-14 md:h-16 flex items-center justify-between gap-3">
 
           {/* Logo */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 min-w-0">
             <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center"
-              style={{ background: "linear-gradient(135deg, #7c6aff, #a78bfa)" }}
+              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+              style={{
+                background: "linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%)",
+                boxShadow: "0 1px 2px rgba(79, 70, 229, 0.25)",
+              }}
             >
               <span className="text-white font-bold text-sm">H</span>
             </div>
-            <span className="font-bold text-white text-lg hidden sm:block">Heavenzy SMS</span>
+            <span className="font-semibold text-base md:text-lg truncate" style={{ color: "var(--text)" }}>
+              Heavenzy SMS
+            </span>
           </div>
 
           {/* Desktop Tabs */}
-          <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
+          <nav className="hidden md:flex items-center gap-0.5 flex-1 justify-center max-w-md">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
+                type="button"
                 style={{
-                  background: tab === t.id ? "rgba(124,106,255,0.15)" : "transparent",
-                  color: tab === t.id ? "var(--accent2)" : "var(--muted)",
+                  background: tab === t.id ? "var(--accent-soft)" : "transparent",
+                  color: tab === t.id ? "var(--accent)" : "var(--muted)",
                   border: "none",
                   borderRadius: 8,
-                  padding: "0.5rem 1rem",
+                  padding: "0.5rem 0.9rem",
                   fontSize: 14,
                   fontWeight: 500,
                   cursor: "pointer",
@@ -149,14 +156,14 @@ export default function App() {
           </nav>
 
           {/* Right: Balance + Offline + Logout */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             {!isOnline && (
               <span
-                className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
+                className="flex items-center gap-1 text-xs px-2 py-1 rounded-md"
                 style={{
-                  background: "rgba(251,191,36,0.15)",
+                  background: "var(--warning-soft)",
                   color: "var(--warning)",
-                  border: "1px solid rgba(251,191,36,0.3)",
+                  border: "1px solid #fde68a",
                 }}
               >
                 <Wifi size={12} />
@@ -164,39 +171,38 @@ export default function App() {
               </span>
             )}
 
-            {/* Balance pill */}
             <button
+              type="button"
               onClick={fetchBalance}
               title="Refresh balance"
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
-                background: "rgba(124,106,255,0.12)",
-                border: "1px solid rgba(124,106,255,0.3)",
-                borderRadius: 10,
-                padding: "0.375rem 0.75rem",
+                background: "var(--accent-soft)",
+                border: "1px solid #c7d2fe",
+                borderRadius: 8,
+                padding: "0.35rem 0.7rem",
                 cursor: "pointer",
-                transition: "background 0.15s",
+                transition: "box-shadow 0.15s",
               }}
-              onMouseOver={(e) => (e.currentTarget.style.background = "rgba(124,106,255,0.2)")}
-              onMouseOut={(e) => (e.currentTarget.style.background = "rgba(124,106,255,0.12)")}
             >
-              <Wallet size={14} style={{ color: "var(--accent2)" }} />
+              <Wallet size={14} style={{ color: "var(--accent)" }} />
               {balanceLoading ? (
-                <RefreshCw size={13} className="animate-spin" style={{ color: "var(--accent2)" }} />
+                <RefreshCw size={13} className="animate-spin" style={{ color: "var(--accent)" }} />
               ) : (
-                <span className="font-bold text-sm" style={{ color: "var(--accent2)" }}>
+                <span className="font-semibold text-sm tabular-nums" style={{ color: "var(--text)" }}>
                   {balance !== null ? `$${balance.toFixed(2)}` : "—"}
                 </span>
               )}
             </button>
 
             <button
+              type="button"
               onClick={logout}
               title="Sign out"
               style={{
-                background: "var(--surface2)",
+                background: "var(--surface)",
                 border: "1px solid var(--border)",
                 borderRadius: 8,
                 color: "var(--muted)",
@@ -225,6 +231,7 @@ export default function App() {
         style={{
           background: "var(--surface)",
           borderTop: "1px solid var(--border)",
+          boxShadow: "0 -4px 12px rgba(15, 23, 42, 0.04)",
           paddingBottom: "env(safe-area-inset-bottom)",
         }}
       >
@@ -232,15 +239,16 @@ export default function App() {
           {TABS.map((t) => (
             <button
               key={t.id}
+              type="button"
               onClick={() => setTab(t.id)}
-              className="flex-1 flex flex-col items-center py-3 gap-0.5"
+              className="flex-1 flex flex-col items-center py-2.5 gap-0.5"
               style={{
                 background: "transparent",
                 border: "none",
-                color: tab === t.id ? "var(--accent2)" : "var(--muted)",
+                color: tab === t.id ? "var(--accent)" : "var(--muted)",
                 cursor: "pointer",
                 fontSize: 10,
-                fontWeight: tab === t.id ? 600 : 400,
+                fontWeight: tab === t.id ? 600 : 500,
                 transition: "color 0.15s",
               }}
             >

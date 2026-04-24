@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { RefreshCw, Copy, CheckCircle, XCircle, RotateCcw, Loader2, Clock } from "lucide-react";
+import { RefreshCw, Copy, CheckCircle, XCircle, RotateCcw, Loader2, Clock, Inbox } from "lucide-react";
 import { api, Order } from "@/lib/api";
 
 interface Props {
@@ -109,25 +109,28 @@ export default function Orders({ refreshTick }: Props) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white">Orders</h2>
+          <h2 className="text-xl font-semibold tracking-tight" style={{ color: "var(--text)" }}>Orders</h2>
           <p className="text-sm mt-0.5" style={{ color: "var(--muted)" }}>
             {orders.length} total orders
           </p>
         </div>
         <button
+          type="button"
           onClick={load}
           disabled={loading}
           style={{
-            background: "var(--surface2)",
+            background: "var(--surface)",
             border: "1px solid var(--border)",
-            borderRadius: 10,
+            borderRadius: 8,
             color: "var(--text)",
-            padding: "0.5rem 1rem",
+            padding: "0.45rem 0.9rem",
+            fontSize: 13,
+            fontWeight: 500,
             cursor: loading ? "not-allowed" : "pointer",
             display: "flex",
             alignItems: "center",
             gap: 6,
-            fontSize: 14,
+            boxShadow: "var(--shadow-sm)",
           }}
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
@@ -141,16 +144,18 @@ export default function Orders({ refreshTick }: Props) {
           <button
             key={f}
             onClick={() => setFilter(f)}
+            type="button"
             style={{
-              background: filter === f ? "var(--accent)" : "var(--surface)",
-              color: filter === f ? "white" : "var(--muted)",
-              border: `1px solid ${filter === f ? "var(--accent)" : "var(--border)"}`,
+              background: filter === f ? "var(--accent-soft)" : "var(--surface)",
+              color: filter === f ? "var(--accent)" : "var(--muted)",
+              border: `1px solid ${filter === f ? "var(--accent2)" : "var(--border)"}`,
               borderRadius: 8,
-              padding: "0.375rem 0.875rem",
+              padding: "0.35rem 0.75rem",
               fontSize: 13,
               fontWeight: 500,
               cursor: "pointer",
               transition: "all 0.15s",
+              boxShadow: filter === f ? "none" : "var(--shadow-sm)",
             }}
           >
             {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -160,7 +165,7 @@ export default function Orders({ refreshTick }: Props) {
       </div>
 
       {error && (
-        <div style={{ background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", borderRadius: 12, padding: "1rem" }}>
+        <div style={{ background: "var(--danger-soft)", border: "1px solid #fecaca", borderRadius: 10, padding: "0.75rem 1rem" }}>
           <p className="text-sm" style={{ color: "var(--danger)" }}>{error}</p>
         </div>
       )}
@@ -170,9 +175,22 @@ export default function Orders({ refreshTick }: Props) {
           <Loader2 size={28} className="animate-spin" style={{ color: "var(--accent)" }} />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-16" style={{ color: "var(--muted)" }}>
-          <div className="text-5xl mb-4">📭</div>
-          <p>No {filter !== "all" ? filter : ""} orders found.</p>
+        <div
+          className="text-center py-16 px-4 rounded-2xl"
+          style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}
+        >
+          <div
+            className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-4 mx-auto"
+            style={{ background: "var(--surface2)" }}
+          >
+            <Inbox size={22} style={{ color: "var(--muted)" }} />
+          </div>
+          <p className="font-medium" style={{ color: "var(--text)" }}>
+            No {filter !== "all" ? filter : ""} orders
+          </p>
+          <p className="text-sm mt-1" style={{ color: "var(--muted)" }}>
+            Purchases will appear here.
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -206,11 +224,11 @@ function OrderCard({
   onCopy: (text: string, key: string) => void;
 }) {
   const statusColor = {
-    active: "#22d3a0",
-    completed: "#7c6aff",
-    cancelled: "#f87171",
-    expired: "#fbbf24",
-  }[order.status] ?? "#6b6b80";
+    active: "#059669",
+    completed: "#4f46e5",
+    cancelled: "#dc2626",
+    expired: "#d97706",
+  }[order.status] ?? "#64748b";
 
   const expires = new Date(order.expires_at);
   const now = new Date();
@@ -220,15 +238,15 @@ function OrderCard({
   return (
     <div style={{
       background: "var(--surface)",
-      border: `1px solid ${order.status === "active" ? "rgba(124,106,255,0.3)" : "var(--border)"}`,
-      borderRadius: 16,
-      padding: "1.25rem",
-      transition: "border-color 0.2s",
+      border: `1px solid ${order.status === "active" ? "#c7d2fe" : "var(--border)"}`,
+      borderRadius: 14,
+      padding: "1.1rem",
+      boxShadow: "var(--shadow-sm)",
     }}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <div className="flex items-center gap-2">
-            <p className="font-semibold text-white capitalize">{order.service}</p>
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="font-semibold capitalize" style={{ color: "var(--text)" }}>{order.service}</p>
             <span className="text-xs px-2 py-0.5 rounded-full font-medium"
               style={{
                 background: `${statusColor}18`,
@@ -244,12 +262,12 @@ function OrderCard({
               </span>
             )}
           </div>
-          <p className="text-sm font-mono mt-1" style={{ color: "var(--accent2)" }}>
+          <p className="text-sm font-mono mt-1" style={{ color: "var(--accent)" }}>
             {order.phone_number}
           </p>
         </div>
         <div className="text-right shrink-0">
-          <p className="text-sm font-bold text-white">${order.price.toFixed(2)}</p>
+          <p className="text-sm font-bold tabular-nums" style={{ color: "var(--text)" }}>${order.price.toFixed(2)}</p>
           <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
             #{order.id}
           </p>
@@ -258,11 +276,11 @@ function OrderCard({
 
       {/* SMS Code */}
       {order.sms_code && (
-        <div className="flex items-center justify-between mb-3 px-3 py-2 rounded-xl"
-          style={{ background: "rgba(34,211,160,0.08)", border: "1px solid rgba(34,211,160,0.25)" }}>
+        <div className="flex items-center justify-between mb-3 px-3 py-2.5 rounded-lg"
+          style={{ background: "var(--success-soft)", border: "1px solid #a7f3d0" }}>
           <div>
-            <p className="text-xs" style={{ color: "var(--muted)" }}>SMS Code</p>
-            <p className="text-xl font-bold font-mono" style={{ color: "var(--success)", letterSpacing: 4 }}>
+            <p className="text-xs" style={{ color: "var(--muted)" }}>SMS code</p>
+            <p className="text-xl font-bold font-mono" style={{ color: "var(--success)", letterSpacing: 3 }}>
               {order.sms_code}
             </p>
           </div>

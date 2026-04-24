@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Lock, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
 
 interface Props {
   onSuccess: (token: string) => void;
@@ -43,31 +43,36 @@ export default function PasswordModal({ onSuccess }: Props) {
   return (
     <div
       className="fixed inset-0 flex items-center justify-center z-50 p-4"
-      style={{ background: "rgba(10,10,15,0.98)", backdropFilter: "blur(16px)" }}
+      style={{
+        background: "rgba(241, 245, 249, 0.92)",
+        backdropFilter: "blur(8px)",
+      }}
     >
       <div
         className="w-full max-w-sm animate-fade-in"
         style={{
           background: "var(--surface)",
           border: "1px solid var(--border)",
-          borderRadius: 24,
-          padding: "2.5rem",
+          borderRadius: 16,
+          padding: "2rem",
+          boxShadow: "var(--shadow-lg)",
         }}
       >
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-8">
+        <div className="flex flex-col items-center mb-7">
           <div
-            className="w-20 h-20 rounded-3xl flex items-center justify-center mb-4 glow-pulse"
+            className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
             style={{
-              background: "linear-gradient(135deg, #7c6aff, #a78bfa)",
-              boxShadow: "0 0 40px rgba(124,106,255,0.35)",
+              background: "linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%)",
+              boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)",
             }}
           >
-            <span className="text-3xl font-bold text-white">H</span>
+            <span className="text-white text-xl font-bold">H</span>
           </div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Heavenzy SMS</h1>
+          <h1 className="text-xl font-semibold tracking-tight" style={{ color: "var(--text)" }}>
+            Heavenzy SMS
+          </h1>
           <p className="text-sm mt-1.5 text-center" style={{ color: "var(--muted)" }}>
-            Enter your password to continue
+            Sign in to continue
           </p>
         </div>
 
@@ -89,22 +94,19 @@ export default function PasswordModal({ onSuccess }: Props) {
                 placeholder="Password"
                 autoComplete="current-password"
                 autoFocus
+                className="w-full text-[15px] outline-none transition-shadow"
                 style={{
                   background: "var(--surface2)",
                   border: `1px solid ${error ? "var(--danger)" : "var(--border)"}`,
-                  borderRadius: 12,
+                  borderRadius: 10,
                   color: "var(--text)",
-                  padding: "0.875rem 2.75rem 0.875rem 2.75rem",
-                  width: "100%",
-                  fontSize: 15,
-                  outline: "none",
-                  transition: "border-color 0.2s",
+                  padding: "0.8rem 2.7rem 0.8rem 2.6rem",
                 }}
                 onFocus={(e) => {
-                  if (!error) e.currentTarget.style.borderColor = "var(--accent)";
+                  if (!error) e.currentTarget.style.boxShadow = "0 0 0 3px var(--accent-soft)";
                 }}
                 onBlur={(e) => {
-                  if (!error) e.currentTarget.style.borderColor = "var(--border)";
+                  e.currentTarget.style.boxShadow = "none";
                 }}
               />
               <button
@@ -124,8 +126,12 @@ export default function PasswordModal({ onSuccess }: Props) {
             </div>
 
             {error && (
-              <p className="text-xs mt-2 flex items-center gap-1.5" style={{ color: "var(--danger)" }}>
-                <span>⚠</span> {error}
+              <p
+                className="text-xs mt-2.5 flex items-start gap-1.5"
+                style={{ color: "var(--danger)" }}
+              >
+                <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                {error}
               </p>
             )}
           </div>
@@ -133,31 +139,30 @@ export default function PasswordModal({ onSuccess }: Props) {
           <button
             type="submit"
             disabled={loading || !password}
+            className="w-full font-semibold"
             style={{
-              background: "linear-gradient(135deg, #7c6aff, #a78bfa)",
+              background: "linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%)",
               color: "white",
               border: "none",
-              borderRadius: 12,
-              padding: "0.875rem",
-              width: "100%",
+              borderRadius: 10,
+              padding: "0.8rem",
               fontSize: 15,
-              fontWeight: 600,
               cursor: loading || !password ? "not-allowed" : "pointer",
-              opacity: !password ? 0.6 : 1,
+              opacity: !password ? 0.5 : 1,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 8,
-              transition: "opacity 0.15s",
+              boxShadow: !password || loading ? "none" : "0 2px 6px rgba(79, 70, 229, 0.35)",
             }}
           >
             {loading ? (
               <>
                 <Loader2 size={16} className="animate-spin" />
-                Verifying...
+                Verifying
               </>
             ) : (
-              "Sign In"
+              "Sign in"
             )}
           </button>
         </form>

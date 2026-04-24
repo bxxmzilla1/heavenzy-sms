@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
-    statusBarStyle: "black-translucent",
+    statusBarStyle: "default",
     title: "Heavenzy SMS",
   },
   icons: {
@@ -20,7 +20,8 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0f",
+  themeColor: "#f1f5f9",
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
