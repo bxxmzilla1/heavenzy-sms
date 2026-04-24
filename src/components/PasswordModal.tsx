@@ -60,8 +60,11 @@ export default function PasswordModal({ onSuccess }: Props) {
         }}
       >
         <div className="flex flex-col items-center mb-7">
-          <div className="mb-4" style={{ boxShadow: "0 4px 14px rgba(15, 23, 42, 0.08)" }}>
-            <BrandLogo size={56} className="rounded-2xl" priority />
+          <div
+            className="mb-4 rounded-2xl overflow-hidden"
+            style={{ background: "var(--surface)", lineHeight: 0, boxShadow: "none" }}
+          >
+            <BrandLogo size={56} className="rounded-2xl" priority seamless />
           </div>
           <h1 className="text-xl font-semibold tracking-tight" style={{ color: "var(--text)" }}>
             Heavenzy SMS

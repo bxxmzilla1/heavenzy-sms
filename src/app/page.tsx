@@ -117,7 +117,7 @@ export default function App() {
 
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-            <BrandLogo size={32} className="rounded-lg shadow-sm" priority />
+            <BrandLogo size={32} className="rounded-lg" priority />
             <span className="font-semibold text-base md:text-lg truncate" style={{ color: "var(--text)" }}>
               Heavenzy SMS
             </span>
