@@ -347,11 +347,32 @@ export default function Services({ onOrderCreated }: Props) {
   );
 }
 
+function ServiceStarIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={22}
+      height={22}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 17.75l-6.172 3.245l1.179 -6.873l-5 -4.867l6.9 -1l3.086 -6.253l3.086 6.253l6.9 1l-5 4.867l1.179 6.873l-6.158 -3.245" />
+    </svg>
+  );
+}
+
 function ServiceAvatar({ label }: { label: string }) {
-  const letter = (label || "?").trim().charAt(0).toUpperCase();
   return (
     <div
-      className="shrink-0 flex items-center justify-center text-sm font-semibold"
+      className="shrink-0 flex items-center justify-center"
+      role="img"
+      aria-label={label || "Service"}
       style={{
         width: 40,
         height: 40,
@@ -361,7 +382,7 @@ function ServiceAvatar({ label }: { label: string }) {
         border: "1px solid #c7d2fe",
       }}
     >
-      {letter}
+      <ServiceStarIcon />
     </div>
   );
 }
