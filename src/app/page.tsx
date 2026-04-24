@@ -1,18 +1,16 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { LayoutDashboard, PhoneCall, ClipboardList, Receipt, LogOut, Wifi } from "lucide-react";
+import { PhoneCall, ClipboardList, Receipt, LogOut, Wifi, Wallet, RefreshCw } from "lucide-react";
 import PasswordModal from "@/components/PasswordModal";
-import Dashboard from "@/components/Dashboard";
 import Services from "@/components/Services";
 import Orders from "@/components/Orders";
 import Transactions from "@/components/Transactions";
-import { setSessionToken } from "@/lib/api";
+import { setSessionToken, api } from "@/lib/api";
 
-type Tab = "dashboard" | "services" | "orders" | "transactions";
+type Tab = "services" | "orders" | "transactions";
 
 const TABS: { id: Tab; label: string; icon: React.ReactNode }[] = [
-  { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} /> },
   { id: "services", label: "Services", icon: <PhoneCall size={20} /> },
   { id: "orders", label: "Orders", icon: <ClipboardList size={20} /> },
   { id: "transactions", label: "Transactions", icon: <Receipt size={20} /> },
@@ -22,10 +20,12 @@ const SESSION_KEY = "heavenzysms_session";
 
 export default function App() {
   const [authenticated, setAuthenticated] = useState(false);
-  const [tab, setTab] = useState<Tab>("dashboard");
+  const [tab, setTab] = useState<Tab>("services");
   const [refreshTick, setRefreshTick] = useState(0);
   const [mounted, setMounted] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
+  const [balance, setBalance] = useState<number | null>(null);
+  const [balanceLoading, setBalanceLoading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -53,6 +53,28 @@ export default function App() {
     }
   }, []);
 
+  const fetchBalance = useCallback(async () => {
+    setBalanceLoading(true);
+    try {
+      const res = await api.getBalance();
+      setBalance(res.balance);
+    } catch {
+      // silently fail
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, []);
+
+  // Fetch balance once authenticated
+  useEffect(() => {
+    if (authenticated) fetchBalance();
+  }, [authenticated, fetchBalance]);
+
+  // Refresh balance whenever an order is created
+  useEffect(() => {
+    if (authenticated && refreshTick > 0) fetchBalance();
+  }, [refreshTick, authenticated, fetchBalance]);
+
   function handleLogin(token: string) {
     localStorage.setItem(SESSION_KEY, token);
     setSessionToken(token);
@@ -63,6 +85,7 @@ export default function App() {
     localStorage.removeItem(SESSION_KEY);
     setSessionToken("");
     setAuthenticated(false);
+    setBalance(null);
   }
 
   const handleOrderCreated = useCallback(() => {
@@ -71,14 +94,11 @@ export default function App() {
   }, []);
 
   if (!mounted) return null;
-
-  if (!authenticated) {
-    return <PasswordModal onSuccess={handleLogin} />;
-  }
+  if (!authenticated) return <PasswordModal onSuccess={handleLogin} />;
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--bg)" }}>
-      {/* Top Nav */}
+      {/* Header */}
       <header
         style={{
           background: "var(--surface)",
@@ -88,9 +108,10 @@ export default function App() {
           zIndex: 40,
         }}
       >
-        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-4">
+
           {/* Logo */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <div
               className="w-8 h-8 rounded-lg flex items-center justify-center"
               style={{ background: "linear-gradient(135deg, #7c6aff, #a78bfa)" }}
@@ -101,7 +122,7 @@ export default function App() {
           </div>
 
           {/* Desktop Tabs */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden md:flex items-center gap-1 flex-1 justify-center">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -127,8 +148,8 @@ export default function App() {
             ))}
           </nav>
 
-          {/* Right */}
-          <div className="flex items-center gap-3">
+          {/* Right: Balance + Offline + Logout */}
+          <div className="flex items-center gap-2 shrink-0">
             {!isOnline && (
               <span
                 className="flex items-center gap-1 text-xs px-2 py-1 rounded-full"
@@ -139,9 +160,38 @@ export default function App() {
                 }}
               >
                 <Wifi size={12} />
-                Offline
+                <span className="hidden sm:inline">Offline</span>
               </span>
             )}
+
+            {/* Balance pill */}
+            <button
+              onClick={fetchBalance}
+              title="Refresh balance"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "rgba(124,106,255,0.12)",
+                border: "1px solid rgba(124,106,255,0.3)",
+                borderRadius: 10,
+                padding: "0.375rem 0.75rem",
+                cursor: "pointer",
+                transition: "background 0.15s",
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.background = "rgba(124,106,255,0.2)")}
+              onMouseOut={(e) => (e.currentTarget.style.background = "rgba(124,106,255,0.12)")}
+            >
+              <Wallet size={14} style={{ color: "var(--accent2)" }} />
+              {balanceLoading ? (
+                <RefreshCw size={13} className="animate-spin" style={{ color: "var(--accent2)" }} />
+              ) : (
+                <span className="font-bold text-sm" style={{ color: "var(--accent2)" }}>
+                  {balance !== null ? `$${balance.toFixed(2)}` : "—"}
+                </span>
+              )}
+            </button>
+
             <button
               onClick={logout}
               title="Sign out"
@@ -164,7 +214,6 @@ export default function App() {
 
       {/* Content */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6 pb-24 md:pb-6">
-        {tab === "dashboard" && <Dashboard refreshTick={refreshTick} />}
         {tab === "services" && <Services onOrderCreated={handleOrderCreated} />}
         {tab === "orders" && <Orders refreshTick={refreshTick} />}
         {tab === "transactions" && <Transactions />}
