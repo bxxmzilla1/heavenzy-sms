@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Lock, Eye, EyeOff, Loader2, AlertCircle } from "lucide-react";
+import BrandLogo from "@/components/BrandLogo";
 
 interface Props {
   onSuccess: (token: string) => void;
@@ -59,14 +60,8 @@ export default function PasswordModal({ onSuccess }: Props) {
         }}
       >
         <div className="flex flex-col items-center mb-7">
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-            style={{
-              background: "linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%)",
-              boxShadow: "0 4px 14px rgba(79, 70, 229, 0.35)",
-            }}
-          >
-            <span className="text-white text-xl font-bold">H</span>
+          <div className="mb-4" style={{ boxShadow: "0 4px 14px rgba(15, 23, 42, 0.08)" }}>
+            <BrandLogo size={56} className="rounded-2xl" priority />
           </div>
           <h1 className="text-xl font-semibold tracking-tight" style={{ color: "var(--text)" }}>
             Heavenzy SMS

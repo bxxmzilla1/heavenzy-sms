@@ -7,6 +7,7 @@ import Services from "@/components/Services";
 import Orders from "@/components/Orders";
 import Transactions from "@/components/Transactions";
 import { setSessionToken, api } from "@/lib/api";
+import BrandLogo from "@/components/BrandLogo";
 
 type Tab = "services" | "orders" | "transactions";
 
@@ -116,15 +117,7 @@ export default function App() {
 
           {/* Logo */}
           <div className="flex items-center gap-2.5 shrink-0 min-w-0">
-            <div
-              className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-              style={{
-                background: "linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%)",
-                boxShadow: "0 1px 2px rgba(79, 70, 229, 0.25)",
-              }}
-            >
-              <span className="text-white font-bold text-sm">H</span>
-            </div>
+            <BrandLogo size={32} className="rounded-lg shadow-sm" priority />
             <span className="font-semibold text-base md:text-lg truncate" style={{ color: "var(--text)" }}>
               Heavenzy SMS
             </span>
