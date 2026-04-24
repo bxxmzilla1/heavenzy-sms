@@ -212,6 +212,11 @@ export default function Orders({ refreshTick }: Props) {
   );
 }
 
+/** Strip whitespace so API codes like "051  382" paste as "051382". */
+function compactSmsCode(code: string): string {
+  return code.replace(/\s+/g, "");
+}
+
 function OrderCard({
   order, actionLoading, copied, onCancel, onComplete, onReRent, onCopy,
 }: {
@@ -234,6 +239,7 @@ function OrderCard({
   const now = new Date();
   const minsLeft = Math.max(0, Math.floor((expires.getTime() - now.getTime()) / 60000));
   const isExpiringSoon = order.status === "active" && minsLeft <= 5;
+  const smsCompact = order.sms_code ? compactSmsCode(order.sms_code) : "";
 
   return (
     <div style={{
@@ -292,12 +298,13 @@ function OrderCard({
           style={{ background: "var(--success-soft)", border: "1px solid #a7f3d0" }}>
           <div>
             <p className="text-xs" style={{ color: "var(--muted)" }}>SMS code</p>
-            <p className="text-xl font-bold font-mono" style={{ color: "var(--success)", letterSpacing: 3 }}>
-              {order.sms_code}
+            <p className="text-xl font-bold font-mono" style={{ color: "var(--success)" }}>
+              {smsCompact}
             </p>
           </div>
           <button
-            onClick={() => onCopy(order.sms_code!, `code-${order.id}`)}
+            type="button"
+            onClick={() => onCopy(smsCompact, `code-${order.id}`)}
             style={{
               background: "rgba(34,211,160,0.15)",
               border: "1px solid rgba(34,211,160,0.3)",
