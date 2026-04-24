@@ -22,7 +22,7 @@ type SortKey = "name" | "price_asc" | "price_desc" | "stock";
 
 const QUICK_FILTERS = [
   "google", "twitter", "telegram", "facebook",
-  "tiktok", "instagram", "whatsapp", "discord",
+  "instagram", "tiktok", "whatsapp", "discord",
   "snapchat", "amazon", "netflix", "spotify",
 ];
 
@@ -38,8 +38,20 @@ const cardClass = {
 /** Service slugs we never list (API may still return them). */
 const EXCLUDED_SERVICE_NAMES = new Set(["draftkings"]);
 
+/** Extra search terms when a quick-filter label may not match the API `name` slug. */
+const SEARCH_VARIANTS: Record<string, string[]> = {
+  instagram: ["instagram", "ig"],
+};
+
 function isServiceExcluded(s: Service): boolean {
   return EXCLUDED_SERVICE_NAMES.has(s.name.toLowerCase().trim());
+}
+
+function searchQueriesForInput(q: string): (string | undefined)[] {
+  const trimmed = q.trim();
+  if (!trimmed) return [undefined];
+  const multi = SEARCH_VARIANTS[trimmed.toLowerCase()];
+  return multi ?? [trimmed];
 }
 
 /** Values accepted by POST /v1/orders per DiddySMS API docs. */
@@ -74,9 +86,22 @@ export default function Services({ onOrderCreated }: Props) {
       setLoading(true);
       setError("");
       try {
-        const res = await api.getServices({ search: q || undefined, page: pg, per_page: 100 });
-        setServices(res.services ?? []);
-        setPagination(res.pagination ?? null);
+        const queries = searchQueriesForInput(q);
+        const responses = await Promise.all(
+          queries.map((search) => api.getServices({ search, page: pg, per_page: 100 }))
+        );
+        const seen = new Set<string>();
+        const merged: Service[] = [];
+        for (const res of responses) {
+          for (const s of res.services ?? []) {
+            if (!seen.has(s.name)) {
+              seen.add(s.name);
+              merged.push(s);
+            }
+          }
+        }
+        setServices(merged);
+        setPagination(responses[0]?.pagination ?? null);
       } catch (e) {
         setError(e instanceof Error ? e.message : "Failed to load services");
       } finally {
